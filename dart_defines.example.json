@@ -1,0 +1,6 @@
+{
+  "SUPABASE_URL": "https://<project-ref>.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "<publishable(또는 legacy anon) key — Supabase 대시보드 Settings > API Keys>",
+  "POSTHOG_API_KEY": "<PostHog Project API Key — 비우면 분석 no-op>",
+  "POSTHOG_HOST": "https://us.i.posthog.com"
+}
