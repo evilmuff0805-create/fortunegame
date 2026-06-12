@@ -27,15 +27,16 @@ v1 완료 조건:
 
 ---
 
-## Slice 0 — 프로젝트 골조
+## Slice 0 — 프로젝트 골조 ✅ (2026-06-12)
 
-- [ ] Flutter 프로젝트 생성 (Android 우선 타깃, iOS 빌드 유지)
-- [ ] 패키지: supabase_flutter, rive, share_plus, flutter_local_notifications, 햅틱
-- [ ] Supabase 프로젝트 + §7 스키마 전체 마이그레이션 (v1 미사용 테이블 포함 — purchases 등)
-- [ ] RLS 정책: 사용자는 자기 행만 읽기/쓰기 (animal_id는 INSERT만, UPDATE 불가 정책)
-- [ ] 익명 인증(anonymous sign-in)으로 첫 실행 즉시 user 생성
-- [ ] 분석 SDK 연결 + 이벤트 상수 정의 (onboarding_complete, pack_opened, shared_assign, shared_lucky)
-- [ ] Verify: 빌드 성공, 익명 유저 생성·RLS 차단 동작을 SQL로 확인
+- [x] Flutter 프로젝트 생성 (Android 우선 타깃, iOS 빌드 유지)
+- [x] 패키지: supabase_flutter, rive, share_plus, flutter_local_notifications, 햅틱(Flutter 내장 HapticFeedback)
+- [x] Supabase 프로젝트 + §7 스키마 전체 마이그레이션 (v1 미사용 테이블 포함 — purchases 등)
+- [x] RLS 정책: 사용자는 자기 행만 읽기/쓰기 (animal_id는 INSERT만, UPDATE 불가 정책)
+- [x] 익명 인증(anonymous sign-in)으로 첫 실행 즉시 user 생성
+- [x] 분석 SDK 연결 + 이벤트 상수 정의 (onboarding_complete, pack_opened, shared_assign, shared_lucky)
+      — PostHog 래퍼 완료, **API key 미발급 → no-op 모드. 키 받으면 dart_defines.json에 주입만 하면 됨**
+- [x] Verify: 빌드 성공, 익명 유저 생성·RLS 차단 동작을 SQL로 확인 (아래 Results)
 
 ## Slice 1 — 사주 엔진 (서버, UI 없이 검증 가능)
 
@@ -90,6 +91,25 @@ v1 완료 조건:
 ## Results
 
 (슬라이스 완료 시마다: 무엇이 바뀌었고, 어떻게 검증했는지)
+
+### Slice 0 (2026-06-12)
+
+**무엇이 바뀌었나:**
+- Flutter 3.44.2 프로젝트 (applicationId `com.fortunecook.fortunegame` — 스토어 첫 업로드 전까지 변경 가능)
+- `lib/core/`: env(--dart-define), Supabase 부트스트랩(익명 로그인), PostHog 래퍼(no-op 폴백), 이벤트 상수 4종
+- `supabase/migrations/`: §7 스키마 전체 + animals 10종 시드(§12) + RLS 20개 정책 + animal_id 불변 트리거(D1)
+- Supabase 클라우드 프로젝트 `oqistijjopgzjloncoru`(ap-northeast-2)에 적용 완료, anonymous sign-in 활성화
+
+**어떻게 검증했나:**
+- `flutter analyze` 0 issues / `flutter test` 2건 통과 / `flutter build apk --debug` 성공
+- REST 실검증 (익명 유저 A·B 2명 생성):
+  - A 자기 users 행 INSERT → 201 / A가 B의 uid로 INSERT → 403 (RLS 차단)
+  - B의 users SELECT → 빈 배열 (타인 행 안 보임) / B가 A 행 UPDATE → 0행 영향
+  - A의 animal_id 변경 시도 → `animal_id is immutable (D1)` 트리거 예외 / settings 변경 → 204 허용
+- iOS: Linux 컨테이너라 빌드 검증 불가 — macOS에서 수행 필요 (이연)
+
+**다음 슬라이스 전 사용자 액션:**
+- PostHog 프로젝트 생성 후 API key를 dart_defines.json에 주입 (없어도 앱 동작엔 지장 없음)
 
 ## Lessons → tasks/lessons.md
 
