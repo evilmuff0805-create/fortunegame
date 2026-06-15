@@ -40,14 +40,15 @@ v1 완료 조건:
 
 ## Slice 1 — 사주 엔진 (서버, UI 없이 검증 가능)
 
-- [ ] Edge Function `calc-saju`: 생년월일(양/음) → 일간 → animal_id
-- [ ] 만세력 검증: 알려진 생일 10개 테스트 케이스 (공개 만세력과 대조) — 음력·경계일 포함
-- [ ] 등급 함수: hash(saju_pillars, date_kst) → §4.1 분포 매핑 + 카테고리 점수 파생
-- [ ] 결정론 테스트: 동일 입력 1,000회 = 동일 출력 / 분포 테스트: 10만 샘플 ≈ 1/3/24/32/25/15%
-- [ ] Edge Function `daily-batch` (cron 00:05 KST): LLM으로 60개 메시지 생성 → fortune_msgs
-- [ ] 배치 실패 폴백: 전일 메시지 재사용 + 알림 로그 (사용자에게 빈 화면 금지)
-- [ ] D6 톤 가이드 프롬프트 작성 + 생성물 수동 검수 1회
-- [ ] Verify: curl로 사주→동물, 날짜→등급, 메시지 조회 E2E 확인
+- [x] Edge Function `calc-saju`: 생년월일(양/음) → 일간 → animal_id — 배포·E2E 확인
+- [x] 만세력 검증: 10 테스트 케이스 (공개 만세력 대조) — 음력 윤달 2건 포함, 전부 통과
+- [x] 등급 함수: hash(일주, date_kst) → §4.1 분포 매핑 + 카테고리 점수 파생
+- [x] 결정론 테스트: 동일 입력 1,000회 동일 / 분포 10만 샘플 최대 편차 0.24%p
+- [x] Edge Function `daily-batch` (cron 00:05 KST 등록됨): LLM 60개 생성 → fortune_msgs
+- [x] 배치 실패 폴백: 전일 메시지 재사용 + 로그 (코드 완성, 동작 확인 — 첫날은 전일 없음)
+- [x] D6 톤 가이드 프롬프트 작성 + 금지어 자동 검증 / **수동 검수는 크레딧 충전 후 1회 예정**
+- [~] Verify: 사주→동물·날짜→등급 E2E 확인 / **메시지 생성은 Anthropic 크레딧 부족으로 보류**
+      → 키는 유효(인증 통과), 계정 잔액 0. 충전 후 배치 1회 재실행하면 60개 채워짐.
 
 ## Slice 2 — 온보딩 → 배정 (첫 수직 슬라이스, Day 0 승부처)
 
@@ -109,7 +110,31 @@ v1 완료 조건:
 - iOS: Linux 컨테이너라 빌드 검증 불가 — macOS에서 수행 필요 (이연)
 
 **다음 슬라이스 전 사용자 액션:**
-- PostHog 프로젝트 생성 후 API key를 dart_defines.json에 주입 (없어도 앱 동작엔 지장 없음)
+- PostHog 프로젝트 생성 후 API key를 dart_defines.json에 주입 (없어도 앱 동작엔 지장 없음) — 2026-06-15 완료
+
+### Slice 1 (2026-06-15)
+
+**무엇이 바뀌었나:**
+- `supabase/functions/_shared/`: 사주 일간(JDN 순수계산)·등급(SHA-256 결정론)·KST 경계·D6 프롬프트·CORS
+- Edge Function 3개 배포 (Supabase `oqistijjopgzjloncoru`):
+  - `calc-saju` — 생년월일(양/음·윤달) → 일주 갑자 + animal_id
+  - `today-fortune` — 오늘(KST) 등급·점수·메시지 + daily_fortunes 기록(D4). 등급 기록은 service-role(클라 위조 차단)
+  - `daily-batch` — Haiku로 60개(동물10×등급6) 생성 + 전일 폴백. service-role(role 클레임 검증)
+- cron `daily-fortune-batch` 등록(`5 15 * * *` = 00:05 KST), 시크릿은 Vault(project_url/service_role_key)
+- 해시 입력 계약 동결: `${일주갑자}|${YYYY-MM-DD KST}` (월주·시주 추가해도 과거 운세 불변)
+
+**어떻게 검증했나 (deno test 17개 통과):**
+- 만세력 10케이스: 양력 anchor(2024-01-01 갑자, 2000-01-01 무오) + 음력 윤달 2건
+  (음력 2020 윤4/1→2020-05-23, 2023 윤2/1→2023-03-22, 공개 만세력 일치). **윤달 게이트 통과**
+- 일간 교차검증: JDN 공식 ≡ 라이브러리 getGapja, 1950–2035 **31,411일 0건 불일치**
+- 결정론 1,000회 동일 / 분포 10만 샘플 최대 편차 0.24%p
+- 실배포 E2E (익명 유저, curl): calc-saju 양력 1990-05-15→경진→호랑이, 음력 윤2/1→2023-03-22 기묘→카피바라;
+  today-fortune 2회 호출 동일 등급(cloudy)·점수 = 결정론 확인
+- **미완**: daily-batch 실배치 — Anthropic 계정 크레딧 부족(400 credit balance)으로 0개 생성.
+  인증·루프·에러핸들링·폴백 경로는 정상 동작 확인. 크레딧 충전 후 1회 재실행 필요.
+
+**다음 슬라이스 전 사용자 액션:**
+- Anthropic 콘솔에서 크레딧 충전(Plans & Billing) → daily-batch 재실행하면 60개 생성·검수 가능
 
 ## Lessons → tasks/lessons.md
 
