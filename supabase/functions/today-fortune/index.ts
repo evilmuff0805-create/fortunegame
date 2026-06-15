@@ -14,13 +14,22 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "missing authorization" }, 401);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  // 사용자 JWT 클라이언트 — 인증 + 본인 행 읽기(RLS)
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
+    supabaseUrl,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authHeader } } },
   );
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) return json({ error: "invalid token" }, 401);
+
+  // service-role 클라이언트 — daily_fortunes 기록 전용.
+  // 등급은 서버가 계산하므로 클라이언트 INSERT를 막고(D10) 서버만 기록한다.
+  const admin = createClient(
+    supabaseUrl,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
   // 사용자 사주 (RLS로 본인 행만)
   const { data: urow, error: uerr } = await supabase
@@ -55,7 +64,7 @@ Deno.serve(async (req) => {
 
   if (!existing) {
     // D4: 첫 조회 시 기록 생성 (opened_at = null = 미개봉)
-    const { error: insErr } = await supabase.from("daily_fortunes").insert({
+    const { error: insErr } = await admin.from("daily_fortunes").insert({
       user_id: user.id,
       date: dateKst,
       grade,
@@ -65,7 +74,7 @@ Deno.serve(async (req) => {
     if (insErr) return json({ error: `record failed: ${insErr.message}` }, 500);
   } else if (!existing.message_id && msg?.id) {
     // 조회 시점엔 배치가 늦었다가 이후 채워진 경우 보강
-    await supabase
+    await admin
       .from("daily_fortunes")
       .update({ message_id: msg.id })
       .eq("user_id", user.id)

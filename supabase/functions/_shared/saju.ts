@@ -11,7 +11,7 @@
 //   → 천간 index = (JDN + 9) mod 10,  간지 index = (JDN + 49) mod 60.
 //   교차검증: 2000-01-01 → 무오일(천간 '무'), 통과.
 
-import KLCDefault from "korean-lunar-calendar";
+import KLCDefault from "npm:korean-lunar-calendar@0.3.6";
 
 // korean-lunar-calendar는 CJS default-class. Deno의 CJS interop에서 default가
 // 네임스페이스로 잡히는 타입 이슈가 있어, 사용하는 메서드만 인터페이스로 고정 후 1회 캐스팅.
