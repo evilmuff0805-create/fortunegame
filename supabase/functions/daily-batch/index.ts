@@ -56,14 +56,31 @@ async function generateBody(
   return text;
 }
 
+/** Bearer JWT의 role 클레임 추출 (서명 검증은 플랫폼 verify_jwt가 이미 수행) */
+function jwtRole(authHeader: string): string | null {
+  const m = authHeader.match(/^Bearer\s+(.+)$/);
+  if (!m) return null;
+  const parts = m[1].split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
-  // service-role 인증 (cron은 Authorization: Bearer <service_role>)
+  // service-role 전용 (cron은 Authorization: Bearer <service_role>).
+  // 정확한 키 문자열 대신 role 클레임으로 판정 — legacy/신규 키 포맷 차이에 견고.
   const auth = req.headers.get("Authorization") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (auth !== `Bearer ${serviceKey}`) {
+  if (jwtRole(auth) !== "service_role") {
     return json({ error: "forbidden: service role only" }, 403);
   }
 
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
   const url = new URL(req.url);
   const date = url.searchParams.get("date") ?? kstDateString();
