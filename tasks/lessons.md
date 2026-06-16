@@ -45,3 +45,20 @@
   60개 중 2개가 어김 → 하드체크(코드)로 막아야 cron이 매일 품질 보장. 프롬프트=권고, 코드체크=강제.
 - **검증 로직은 배치에 태우기 전에 deno 단위 테스트로.** 검출 케이스 + 오탐 후보를 같이 넣어
   (예: 해요체 8건 잡기 / 필요·희망·죽 통과) 실 LLM 호출(비용) 없이 필터 정확도를 먼저 고정.
+
+## 2026-06-16 (Slice 2 — 온보딩·배정·계정 승격)
+
+- **Supabase는 `@example.com` 등 테스트 도메인을 거부**(`email_address_invalid`, 본문에 빈 이메일로 표시돼 헷갈림).
+  익명→이메일 승격 E2E는 실제 도메인으로 테스트할 것. 인박스 없이 검증하려면 admin API
+  (`PUT /auth/v1/admin/users/{id}` + service_role, `email_confirm:true`)로 확정 후 password grant 재로그인.
+  실제 OTP 전달은 SMTP 설정 필요(빌트인 메일러는 한도 매우 낮음 → 프로덕션 전 커스텀 SMTP).
+- **익명→이메일 승격은 uid를 보존**한다 → animal_id가 uid 기반이라 프로필 행이 그대로(D1 복원의 핵심).
+  reload 불필요(행 불변). 단 라우터가 프로필을 watch하면 승격/배정 직후 reload 시 **온보딩 도중 홈으로 채감** →
+  reload는 "시작하기"(onComplete) 시점에만. 연출/소개 중에는 결과를 로컬 state로 들고 간다.
+- **서버 권위 쓰기 + RLS 잠금 패턴(D10과 동일)**: animal_id 위조를 막으려면 users INSERT 정책을 제거하고
+  Edge Function(service-role)만 쓰게. 멱등성: 이미 프로필 있으면 다른 입력이 와도 기존 동물 반환(불변 트리거와 이중 방어).
+- **share_plus 12.x API 변경**: `Share.shareXFiles(...)` → `SharePlus.instance.share(ShareParams(text:, files:[XFile]))`.
+- **위젯→이미지 공유는 RepaintBoundary + path_provider.** `boundary.toImage(pixelRatio:3)` → PNG bytes →
+  temp dir 파일 → XFile. 캡처 대상은 화면에 마운트돼 있어야 함(오프스크린이면 별도 렌더 필요).
+- **플레이스홀더 단계에선 '흐름'과 '감동'을 분리해 검증·평가**. 아트 전 슬라이스는 경로/상태/데이터 정합만 보고,
+  완성도 판단은 아트 후로 미룬다(todo에 명시) — 조기 평가로 흔들리지 않기.

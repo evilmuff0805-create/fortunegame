@@ -49,3 +49,6 @@ dart_defines.json
 
 # Supabase 로컬 상태
 supabase/.temp/
+
+# Kotlin compiler transient sessions
+android/.kotlin/
