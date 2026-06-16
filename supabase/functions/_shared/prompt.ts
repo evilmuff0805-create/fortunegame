@@ -60,9 +60,21 @@ export function buildUserPrompt(s: MsgSpec): string {
   ].join("\n");
 }
 
-/** D6 위반 후보 어휘 — 생성물 자동 검증용 (수동 검수 보조) */
-export const FORBIDDEN_WORDS = [
-  "죽", "망", "흉", "불행", "사고", "실패", "최악", "재앙", "저주", "파산",
+/**
+ * D6 위반 부정 표현 — 생성물 자동 검증용 (수동 검수 보조).
+ * 단일 글자 substring은 오탐이 많아(희망·망설임·죽(음식)·사고력) 정규식으로 부정 용법만 잡는다.
+ */
+export const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
+  { re: /죽(다|음|어|었|을|는다|여)/, label: "죽음" },
+  { re: /망(하|했|쳐|칠|해서|해버)/, label: "망함" },
+  { re: /흉(하|한|했|조|측|흉)/, label: "흉" },
+  { re: /불행/, label: "불행" },
+  { re: /사고(?!력|방식|회로|뭉치)/, label: "사고(불상사)" },
+  { re: /실패/, label: "실패" },
+  { re: /최악/, label: "최악" },
+  { re: /재앙/, label: "재앙" },
+  { re: /저주/, label: "저주" },
+  { re: /파산/, label: "파산" },
 ];
 
 // '요'로 끝나지만 해요체가 아닌 명사 — 오탐 방지 (예: "그게 제일 중요")
@@ -88,8 +100,8 @@ export function hasHaeyoEnding(text: string): boolean {
 export function violatesTone(text: string): string | null {
   if (text.length < 10) return "너무 짧음";
   if (text.length > 200) return "너무 김";
-  for (const w of FORBIDDEN_WORDS) {
-    if (text.includes(w)) return `금지어 포함: ${w}`;
+  for (const { re, label } of FORBIDDEN_PATTERNS) {
+    if (re.test(text)) return `금지 표현: ${label}`;
   }
   if (hasHaeyoEnding(text)) return "해요체 어미 혼입 (반말 통일 위반)";
   return null;
