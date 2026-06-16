@@ -19,7 +19,11 @@ interface AnimalRow {
   personality: string;
 }
 
-async function generateBody(
+// 톤 검증 재시도 횟수. 초과하면 마지막 결과를 그대로 통과(무한 루프·토큰 낭비 방지).
+const MAX_TONE_RETRIES = 3;
+
+/** Anthropic 1회 호출 (HTTP 오류는 throw → 상위에서 전일 폴백 처리) */
+async function callLLM(
   apiKey: string,
   animal: AnimalRow,
   grade: FortuneGrade,
@@ -50,10 +54,39 @@ async function generateBody(
     throw new Error(`anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
   }
   const data = await res.json();
-  const text = (data.content?.[0]?.text ?? "").trim();
-  const bad = violatesTone(text);
-  if (bad) throw new Error(`tone check failed (${bad}): ${text.slice(0, 60)}`);
-  return text;
+  return (data.content?.[0]?.text ?? "").trim();
+}
+
+interface GenResult {
+  body: string;
+  degraded: boolean; // 톤 검증 통과 못 했지만 폴백으로 통과시킨 경우
+  issue: string | null; // degraded일 때 마지막 위반 사유
+}
+
+/**
+ * 톤 검증을 통과할 때까지 최대 MAX_TONE_RETRIES회 재시도.
+ * 초과하면 마지막 결과를 통과시키고 degraded=true로 로그를 남긴다.
+ * (단 빈 응답은 통과 불가 → throw → 상위 전일 폴백)
+ */
+async function generateBody(
+  apiKey: string,
+  animal: AnimalRow,
+  grade: FortuneGrade,
+): Promise<GenResult> {
+  let last = "";
+  let lastIssue: string | null = null;
+  for (let attempt = 0; attempt <= MAX_TONE_RETRIES; attempt++) {
+    const text = await callLLM(apiKey, animal, grade);
+    const bad = violatesTone(text);
+    if (!bad) return { body: text, degraded: false, issue: null };
+    last = text;
+    lastIssue = bad;
+  }
+  if (!last) throw new Error("empty result after retries");
+  console.warn(
+    `tone retry exhausted (${animal.id}/${grade}): "${lastIssue}" — 마지막 결과 통과: ${last.slice(0, 60)}`,
+  );
+  return { body: last, degraded: true, issue: lastIssue };
 }
 
 /** Bearer JWT의 role 클레임 추출 (서명 검증은 플랫폼 verify_jwt가 이미 수행) */
@@ -100,6 +133,7 @@ Deno.serve(async (req) => {
 
   const rows: { date: string; animal_id: string; grade: string; body: string }[] = [];
   const errors: string[] = [];
+  const degraded: string[] = []; // 톤 재시도 초과로 통과시킨 항목 (검수 우선 대상)
 
   if (!apiKey) {
     return json({ error: "ANTHROPIC_API_KEY not set — 배치 보류" }, 503);
@@ -109,8 +143,9 @@ Deno.serve(async (req) => {
     for (const grade of GRADES) {
       if (have.has(`${animal.id}:${grade}`)) continue;
       try {
-        const body = await generateBody(apiKey, animal, grade);
-        rows.push({ date, animal_id: animal.id, grade, body });
+        const r = await generateBody(apiKey, animal, grade);
+        rows.push({ date, animal_id: animal.id, grade, body: r.body });
+        if (r.degraded) degraded.push(`${animal.id}/${grade}: ${r.issue}`);
       } catch (e) {
         errors.push(`${animal.id}/${grade}: ${(e as Error).message}`);
       }
@@ -145,10 +180,15 @@ Deno.serve(async (req) => {
     console.error(`daily-batch ${date}: ${errors.length} errors, ${fallbackCopied} copied from ${yesterday}`);
   }
 
+  if (degraded.length > 0) {
+    console.warn(`daily-batch ${date}: ${degraded.length} degraded (톤 재시도 초과): ${degraded.join("; ")}`);
+  }
+
   return json({
     date,
     generated: rows.length,
     fallbackCopied,
+    degraded,
     errors,
     total: rows.length + fallbackCopied,
   });

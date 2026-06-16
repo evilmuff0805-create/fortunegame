@@ -41,6 +41,21 @@ Deno.test("violatesTone이 해요체 혼입을 잡는다", () => {
   assertEquals(violatesTone("괜찮아, 천천히 가도 돼. 넌 잘하고 있어."), null);
 });
 
+Deno.test("도입부: 맨 앞 상투구만 차단, 중간 '오늘'은 허용", () => {
+  // 맨 앞 → 차단
+  assertEquals(
+    violatesTone("오늘은 한 발 한 발 편하게 내딛는 날이야. 잘하고 있어."),
+    "도입부 상투구 (^오늘은/^오늘따라/^오늘 같은)",
+  );
+  assertEquals(
+    violatesTone("오늘 같은 날엔 네 취향이 빛나거든. 천천히 골라보자."),
+    "도입부 상투구 (^오늘은/^오늘따라/^오늘 같은)",
+  );
+  // 문장 중간의 '오늘' → 허용
+  assertEquals(violatesTone("갈기가 반짝이는 날이야. 오늘따라 네 목소리가 잘 울릴 거야."), null);
+  assertEquals(violatesTone("뿔이 솟은 날이지. 오늘은 너의 날이거든, 나아가 보자."), null);
+});
+
 Deno.test("금지 표현: 진짜 부정 용법만 잡고 오탐 없음", () => {
   // 부정 용법 → 잡혀야
   assert(violatesTone("오늘 일이 망해버릴 것 같아. 조심하자.") !== null);

@@ -80,6 +80,9 @@ export const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
 // '요'로 끝나지만 해요체가 아닌 명사 — 오탐 방지 (예: "그게 제일 중요")
 const YO_NOUNS = ["중요", "필요", "주요", "고요", "동요", "내용", "조용"];
 
+// 도입부 상투구 — 메시지 맨 앞(^)만 차단. 문장 중간의 '오늘'은 허용.
+const BANNED_OPENINGS = /^(오늘은|오늘따라|오늘 같은)/;
+
 /**
  * 해요체(존댓말) 어미가 섞였는지 검출 — 반말 통일 규칙 위반.
  * 문장 단위로 끝이 한글+'요'(+이모지/문장부호)인지 확인.
@@ -100,6 +103,9 @@ export function hasHaeyoEnding(text: string): boolean {
 export function violatesTone(text: string): string | null {
   if (text.length < 10) return "너무 짧음";
   if (text.length > 200) return "너무 김";
+  if (BANNED_OPENINGS.test(text.trimStart())) {
+    return "도입부 상투구 (^오늘은/^오늘따라/^오늘 같은)";
+  }
   for (const { re, label } of FORBIDDEN_PATTERNS) {
     if (re.test(text)) return `금지 표현: ${label}`;
   }
