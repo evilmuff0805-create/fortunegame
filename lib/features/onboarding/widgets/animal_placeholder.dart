@@ -12,6 +12,15 @@ class AnimalPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 실제 아트가 있으면 이미지, 없으면 색 플레이스홀더(아트 양산 전 9종).
+    if (animal.hasArt) {
+      return Image.asset(
+        animal.baseAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+    }
     return Container(
       width: size,
       height: size,

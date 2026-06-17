@@ -19,7 +19,7 @@ final animalCatalogProvider = FutureProvider<Map<String, Animal>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
   final rows = await client
       .from('animals')
-      .select('id, name, element, personality, population_pct');
+      .select('id, name, element, personality, population_pct, asset_key');
   final map = <String, Animal>{};
   for (final r in rows) {
     final a = Animal.fromRow(r);

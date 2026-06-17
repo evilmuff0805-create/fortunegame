@@ -167,6 +167,20 @@ v1 완료 조건:
 - (선택) 실기기에서 신규설치→배정→공유→재설치→이메일로그인→동물복원 수동 E2E (컨테이너 검증 불가분)
 - Google/Apple 쓰려면 네이티브 OAuth 설정 필요 (실기기 단계, lessons 참조)
 
+### 카피바라 파일럿 아트 (2026-06-17) — D11 §10 step 2
+
+**무엇이 바뀌었나:**
+- 원본 6장 수신(`art/raw/capybara/`) → `art/process_capybara.py`로 일괄 처리(재현 가능, 9종 양산 재사용)
+- 누끼: **외곽 플러드필**(테두리 연결 흰색만 제거) — 눈 하이라이트 등 내부 흰색 보존(~1900px 확인)
+- §1 규격: 동물 5종 2048² 마스터(정수리 0.12/바닥 0.88/중심 0.50 자동검증 OK), 512² 앱 에셋
+- §8 모자: 이미 투명 → 1024×768 하단중앙 재배치(`item_hat_beret01`)
+- §9 네이밍: `animal_gito_base/deliver`, `face_gito_happy/worry/wow`, `item_hat_beret01`
+- 연결: pubspec assets 등록, animals.gito.asset_key='animal_gito_base', AnimalPlaceholder가 gito는 실제 이미지·나머지 9종은 색 플레이스홀더
+- **이제 gito만 실제 아트** — 온보딩/소개/홈/공유카드에서 카피바라 진짜 그림 노출. 9종은 여전히 플레이스홀더
+
+**검증:** flutter analyze 0 / test 5건 / APK 빌드. 512 앱 에셋 시각 확인(투명·하이라이트·후광 없음)
+**유보:** 표정은 풀 스프라이트(눈·입 분리 레이어 아님 — 벡터 원본 필요 시 후속). 모자 앵커 스냅은 Slice 4
+
 ## Lessons → tasks/lessons.md
 
 (수정·실수 발생 시 즉시 기록)

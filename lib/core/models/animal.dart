@@ -8,6 +8,7 @@ class Animal {
     required this.element,
     required this.personality,
     required this.populationPct,
+    required this.assetKey,
   });
 
   final String id;
@@ -15,6 +16,7 @@ class Animal {
   final String element; // 오행 서사 (큰 나무 등)
   final String personality;
   final double populationPct;
+  final String assetKey; // §9 기본 컷 파일 stem (예: animal_gito_base)
 
   factory Animal.fromRow(Map<String, dynamic> row) {
     return Animal(
@@ -23,10 +25,18 @@ class Animal {
       element: row['element'] as String,
       personality: row['personality'] as String,
       populationPct: (row['population_pct'] as num).toDouble(),
+      assetKey: row['asset_key'] as String,
     );
   }
 
-  /// 플레이스홀더 베이스 색 (실제 아트 전까지). 골격가이드 §6 파스텔 톤.
+  /// 실제 아트가 번들된 동물(카피바라 파일럿). 9종 양산 시 여기에 추가.
+  static const _withArt = {'gito'};
+  bool get hasArt => _withArt.contains(id);
+
+  /// 기본 컷 에셋 경로 (hasArt일 때만 유효).
+  String get baseAsset => 'assets/animals/$assetKey.png';
+
+  /// 플레이스홀더 베이스 색 (아트 없는 9종). 골격가이드 §6 파스텔 톤.
   Color get placeholderColor => _baseColors[id] ?? const Color(0xFFE8C9A0);
 
   /// 플레이스홀더 표정 이모지 (실제 아트 전까지).

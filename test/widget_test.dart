@@ -52,11 +52,12 @@ void main() {
 
   testWidgets('동물 플레이스홀더는 이름 이모지를 렌더', (tester) async {
     const animal = Animal(
-      id: 'imsu',
+      id: 'imsu', // 아트 미양산 → 이모지 플레이스홀더
       name: '고래',
       element: '바다',
       personality: '깊은 지혜',
       populationPct: 10,
+      assetKey: 'animal_imsu',
     );
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: Center(child: AnimalPlaceholder(animal: animal))),
