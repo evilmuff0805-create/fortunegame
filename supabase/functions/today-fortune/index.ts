@@ -1,10 +1,12 @@
-// today-fortune — 오늘(KST)의 운세 등급·점수·메시지.
-// daily_fortunes upsert(D4: 첫날부터 기록) + fortune_msgs 조인. JWT 필수.
-// 개봉(opened_at)은 Slice 3에서 별도 처리 — 여기선 조회/생성만.
+// today-fortune — 오늘(KST) 봉투 상태 + 누설 티어.
+// ①: 미개봉이면 등급 전체를 내리지 않고 '누설 티어'(rainbow/radiant/none)만 노출 →
+//     비/흐림/갬/맑음은 개봉 전 전부 'none'으로 동일 → "나쁜 날 골라 안 열기" 불가.
+// 등급·보상 확정은 open-pack 서버에서만. D4 기록(daily_fortunes)은 여기서 보장.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { computeFortune } from "../_shared/grade.ts";
+import { ensureDailyFortune } from "../_shared/fortune.ts";
+import { leakTier } from "../_shared/reward.ts";
 import { kstDateString } from "../_shared/kst.ts";
 
 Deno.serve(async (req) => {
@@ -15,78 +17,38 @@ Deno.serve(async (req) => {
   if (!authHeader) return json({ error: "missing authorization" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  // 사용자 JWT 클라이언트 — 인증 + 본인 행 읽기(RLS)
-  const supabase = createClient(
-    supabaseUrl,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
+  const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: authHeader } },
+  });
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) return json({ error: "invalid token" }, 401);
 
-  // service-role 클라이언트 — daily_fortunes 기록 전용.
-  // 등급은 서버가 계산하므로 클라이언트 INSERT를 막고(D10) 서버만 기록한다.
-  const admin = createClient(
-    supabaseUrl,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-  // 사용자 사주 (RLS로 본인 행만)
   const { data: urow, error: uerr } = await supabase
-    .from("users")
-    .select("animal_id, saju_pillars")
-    .eq("id", user.id)
-    .single();
+    .from("users").select("animal_id, saju_pillars").eq("id", user.id).single();
   if (uerr || !urow) return json({ error: "user profile not found" }, 404);
 
   const dayPillar = (urow.saju_pillars as { day?: string })?.day;
   if (!dayPillar) return json({ error: "saju_pillars.day missing" }, 422);
 
   const dateKst = kstDateString();
-  const { grade, scores } = await computeFortune(dayPillar, dateKst);
-
-  // 이미 기록된 운세가 있으면 그대로 (결정론이라 동일하지만 opened_at 보존)
-  const { data: existing } = await supabase
-    .from("daily_fortunes")
-    .select("grade, category_scores, message_id, opened_at")
-    .eq("user_id", user.id)
-    .eq("date", dateKst)
-    .maybeSingle();
-
-  // 오늘의 메시지 (동물×등급) — 배치가 채워둔 fortune_msgs
-  const { data: msg } = await supabase
-    .from("fortune_msgs")
-    .select("id, body")
-    .eq("date", dateKst)
-    .eq("animal_id", urow.animal_id)
-    .eq("grade", grade)
-    .maybeSingle();
-
-  if (!existing) {
-    // D4: 첫 조회 시 기록 생성 (opened_at = null = 미개봉)
-    const { error: insErr } = await admin.from("daily_fortunes").insert({
-      user_id: user.id,
-      date: dateKst,
-      grade,
-      category_scores: scores,
-      message_id: msg?.id ?? null,
-    });
-    if (insErr) return json({ error: `record failed: ${insErr.message}` }, 500);
-  } else if (!existing.message_id && msg?.id) {
-    // 조회 시점엔 배치가 늦었다가 이후 채워진 경우 보강
-    await admin
-      .from("daily_fortunes")
-      .update({ message_id: msg.id })
-      .eq("user_id", user.id)
-      .eq("date", dateKst);
+  let df;
+  try {
+    df = await ensureDailyFortune(admin, user.id, dayPillar, urow.animal_id, dateKst);
+  } catch (e) {
+    return json({ error: String((e as Error).message ?? e) }, 500);
   }
 
+  const opened = !!df.openedAt;
+  // 미개봉: 누설 티어만. 개봉됨: 이미 본 카드라 전체 공개해도 됨(악용 무관).
   return json({
     date: dateKst,
     animalId: urow.animal_id,
-    grade,
-    scores,
-    message: msg?.body ?? null,
-    opened: !!existing?.opened_at,
+    opened,
+    leak: leakTier(df.grade),
+    ...(opened
+      ? { grade: df.grade, scores: df.scores, message: df.message, rewardItemId: df.rewardItemId }
+      : {}),
   });
 });

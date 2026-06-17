@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/animal.dart';
 import '../core/models/profile.dart';
 import '../core/supabase_client.dart';
+import '../features/daily/daily_repository.dart';
 import 'onboarding_repository.dart';
 
 final supabaseClientProvider = Provider<SupabaseClient>(
@@ -12,6 +13,15 @@ final supabaseClientProvider = Provider<SupabaseClient>(
 
 final onboardingRepositoryProvider = Provider<OnboardingRepository>(
   (ref) => OnboardingRepository(ref.watch(supabaseClientProvider)),
+);
+
+final dailyRepositoryProvider = Provider<DailyRepository>(
+  (ref) => DailyRepository(ref.watch(supabaseClientProvider)),
+);
+
+/// 오늘 봉투 상태 (미개봉/개봉 + 누설 티어). 개봉 후 invalidate로 새로고침.
+final dailyStatusProvider = FutureProvider<DailyStatus>(
+  (ref) => ref.watch(dailyRepositoryProvider).status(),
 );
 
 /// 동물 카탈로그 (id → Animal). 인증된 사용자 누구나 읽기 가능(RLS).

@@ -36,6 +36,9 @@ class Animal {
   /// 기본 컷 에셋 경로 (hasArt일 때만 유효).
   String get baseAsset => 'assets/animals/$assetKey.png';
 
+  /// 봉투 전달 포즈 (hasArt일 때만; gito = animal_gito_deliver).
+  String? get deliverAsset => hasArt ? 'assets/animals/animal_${id}_deliver.png' : null;
+
   /// 플레이스홀더 베이스 색 (아트 없는 9종). 골격가이드 §6 파스텔 톤.
   Color get placeholderColor => _baseColors[id] ?? const Color(0xFFE8C9A0);
 

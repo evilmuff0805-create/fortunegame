@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/analytics/analytics_service.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/supabase_client.dart';
 
 Future<void> main() async {
@@ -10,6 +11,7 @@ Future<void> main() async {
 
   final supabaseReady = await SupabaseBootstrap.init();
   await AnalyticsService.instance.init();
+  await NotificationService.instance.init();
 
   final userId = supabaseReady ? SupabaseBootstrap.currentUserId : null;
   if (userId != null) {

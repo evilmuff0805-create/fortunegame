@@ -8,6 +8,8 @@ import 'package:fortunegame/features/onboarding/onboarding_data.dart';
 import 'package:fortunegame/features/onboarding/steps/birth_input_step.dart';
 import 'package:fortunegame/features/onboarding/steps/confirm_step.dart';
 import 'package:fortunegame/features/onboarding/widgets/animal_placeholder.dart';
+import 'package:fortunegame/features/daily/envelope_tear.dart';
+import 'package:fortunegame/features/daily/grade_style.dart';
 
 void main() {
   testWidgets('Supabase 미설정 → 오프라인 안내 표시', (tester) async {
@@ -63,5 +65,26 @@ void main() {
       home: Scaffold(body: Center(child: AnimalPlaceholder(animal: animal))),
     ));
     expect(find.text('🐳'), findsOneWidget);
+  });
+
+  testWidgets('봉투 찢기: 탭하면 바로 열림(스킵)', (tester) async {
+    var opened = false;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: EnvelopeTear(leak: 'none', onOpened: () => opened = true),
+      ),
+    ));
+    expect(find.text('봉투를 쭉 찢어봐'), findsOneWidget);
+    await tester.tap(find.byType(EnvelopeTear));
+    await tester.pump(const Duration(milliseconds: 300)); // 완료 딜레이
+    expect(opened, isTrue);
+  });
+
+  test('등급 스타일: 맑음 이상만 공유 가능', () {
+    expect(GradeStyle.of('rainbow').shareable, isTrue);
+    expect(GradeStyle.of('sunny').shareable, isTrue);
+    expect(GradeStyle.of('calm').shareable, isFalse);
+    expect(GradeStyle.of('rainy').shareable, isFalse);
+    expect(GradeStyle.of('rainy').label, '비');
   });
 }
