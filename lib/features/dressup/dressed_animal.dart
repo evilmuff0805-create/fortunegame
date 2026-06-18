@@ -17,6 +17,7 @@ class DressedAnimal extends StatefulWidget {
     this.size = 200,
     this.useDeliverPose = false,
     this.idle = IdleAnim.enabled,
+    this.showPlaceholderItems = false,
   });
 
   final Animal animal;
@@ -24,6 +25,9 @@ class DressedAnimal extends StatefulWidget {
   final double size;
   final bool useDeliverPose;
   final bool idle;
+
+  /// 아트 없는 아이템(플레이스홀더 칩)도 합성할지. 꾸미기 미리보기=true, 홈=false(깔끔하게).
+  final bool showPlaceholderItems;
 
   @override
   State<DressedAnimal> createState() => _DressedAnimalState();
@@ -67,6 +71,10 @@ class _DressedAnimalState extends State<DressedAnimal>
     );
   }
 
+  /// 아트 없는 아이템은 showPlaceholderItems일 때만 합성(홈은 깔끔, 꾸미기는 미리보기).
+  bool _show(Item? it) =>
+      it != null && (it.hasArt || widget.showPlaceholderItems);
+
   Widget _buildStack(double s) {
     final hat = widget.equipped['hat'];
     final hand = widget.equipped['hand_r'];
@@ -76,11 +84,11 @@ class _DressedAnimalState extends State<DressedAnimal>
       clipBehavior: Clip.none,
       children: [
         // 배경 (풀캔버스)
-        if (bg != null)
+        if (_show(bg))
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: bg.bgFill(),
+              child: bg!.bgFill(),
             ),
           ),
         // 동물 본체
@@ -92,9 +100,9 @@ class _DressedAnimalState extends State<DressedAnimal>
           ),
         ),
         // 모자 (§3 HAT 앵커, 하단중앙 기준)
-        if (hat != null) _anchored(s, 'hat', hat.composeVisual()),
+        if (_show(hat)) _anchored(s, 'hat', hat!.composeVisual()),
         // 손소품 (§3 HAND_R 앵커, 중앙 기준)
-        if (hand != null) _anchored(s, 'hand_r', hand.composeVisual()),
+        if (_show(hand)) _anchored(s, 'hand_r', hand!.composeVisual()),
       ],
     );
   }
@@ -102,10 +110,11 @@ class _DressedAnimalState extends State<DressedAnimal>
   /// 정규화 앵커에 아이템 스냅 (픽셀 하드코딩 없음).
   Widget _anchored(double s, String slot, Widget child) {
     final a = slotAnchors[slot]!;
-    final w = a.widthFrac * s;
+    // 모자는 동물별 너비·겹침(뿔·귀 보정) 적용.
+    final widthFrac = slot == 'hat' ? hatWidthFor(widget.animal.id) : a.widthFrac;
+    final w = widthFrac * s;
     final h = w * a.aspect;
     final ax = a.anchor.dx * s;
-    // 모자는 동물별 겹침(뿔·귀 보정)을 base y에 더해 앵커 산출.
     final anchorY = slot == 'hat'
         ? (kHatBaseY + hatOverlapFor(widget.animal.id))
         : a.anchor.dy;

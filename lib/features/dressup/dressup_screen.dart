@@ -62,7 +62,12 @@ class _DressupScreenState extends ConsumerState<DressupScreen> {
       padding: const EdgeInsets.all(20),
       children: [
         Center(
-          child: DressedAnimal(animal: widget.animal, equipped: composed, size: 220),
+          child: DressedAnimal(
+            animal: widget.animal,
+            equipped: composed,
+            size: 220,
+            showPlaceholderItems: true, // 꾸미기 미리보기는 플레이스홀더도 보여줌
+          ),
         ),
         const SizedBox(height: 16),
 

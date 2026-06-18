@@ -25,19 +25,27 @@ const double kHatBaseY = 0.12;
 /// 위에 잡히는 동물은 더 많이 내려야 모자가 머리에 얹힌다.
 const double kHatOverlapDefault = 0.05; // gito(카피바라) 등 부착물 작은 동물
 const Map<String, double> kHatOverlapByAnimal = {
-  'gapmok': 0.14, // 사슴: 뿔이 머리 위로 솟아 bbox 상단=뿔끝 → 모자를 더 내려야 머리에 얹힘(뿔은 양옆 노출)
+  'gapmok': 0.18, // 사슴: 뿔이 머리 위로 솟음 → 더 내려 머리에 얹고 뿔은 위·옆 노출
 };
 double hatOverlapFor(String animalId) =>
     kHatOverlapByAnimal[animalId] ?? kHatOverlapDefault;
+
+/// 모자 너비(박스 비율). 동물별 오버라이드: 뿔 있는 동물은 작게 해야 뿔이 안 가려짐.
+const double kHatWidthDefault = 0.44;
+const Map<String, double> kHatWidthByAnimal = {
+  'gapmok': 0.34, // 사슴: 작은 베레모라야 뿔이 양옆으로 노출(0.52는 뿔 덮음)
+};
+double hatWidthFor(String animalId) =>
+    kHatWidthByAnimal[animalId] ?? kHatWidthDefault;
 
 /// item_hat_beret01 캔버스 비율(512×384). 실제 아트 교체 시만 갱신.
 const double kHatAspect = 384 / 512;
 
 const slotAnchors = <String, SlotAnchor>{
   'hat': SlotAnchor(
-    anchor: Offset(kHatAnchorX, kHatBaseY), // y는 DressedAnimal이 동물별 겹침을 더해 보정
+    anchor: Offset(kHatAnchorX, kHatBaseY), // y·width는 DressedAnimal이 동물별로 보정
     refPoint: Alignment.bottomCenter,
-    widthFrac: 0.52,
+    widthFrac: kHatWidthDefault,
     aspect: kHatAspect,
   ),
   'hand_r': SlotAnchor(
