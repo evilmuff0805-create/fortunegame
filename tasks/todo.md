@@ -94,6 +94,12 @@ v1 완료 조건:
 **남은 사용자 액션(도그푸딩):**
 - 폰에서 익명→이메일 승격 완료 후 **이메일 알려주면** → 그 계정에만 베레모 service-role 주입 → 소유→장착→저장→홈 반영→재실행 유지 검증
 
+### 사슴(갑목) 파일럿 아트 (2026-06-18)
+- 5컷 처리(`art/process_animal_art.py` 일반 파이프라인): animal_gapmok_base/deliver, face_gapmok_happy/worry/wow → 2048 마스터 + 512 앱에셋, 검증 OK
+- animals.gapmok.asset_key='animal_gapmok_base', `Animal._withArt`에 gapmok 추가 → 1984-11-16(내 생일) 계정이 실제 사슴 아트로 표시
+- **뿔–베레모 충돌 해결**: 사슴은 뿔이 bbox 상단이라 기본 hatOverlap(0.05)이면 모자가 뜸 → **gapmok=0.14**로 머리에 안착·뿔 양옆 노출(합성 시뮬로 확정). 골격가이드 §3.1·lessons 기록. 동물별 `kHatOverlapByAnimal` 도입
+- 검증: analyze 0·test 9·APK / 표정 파츠 분리는 v1 검증 후. 나머지 8종은 7일 도그푸딩 후 보류
+
 ## Slice 5 — 마감 + 배포
 
 - [ ] 빈 상태/오류/오프라인 처리 (배치 누락 폴백 포함)

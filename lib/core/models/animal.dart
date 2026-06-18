@@ -29,8 +29,8 @@ class Animal {
     );
   }
 
-  /// 실제 아트가 번들된 동물(카피바라 파일럿). 9종 양산 시 여기에 추가.
-  static const _withArt = {'gito'};
+  /// 실제 아트가 번들된 동물. 9종 양산 시 여기에 추가.
+  static const _withArt = {'gito', 'gapmok'};
   bool get hasArt => _withArt.contains(id);
 
   /// 기본 컷 에셋 경로 (hasArt일 때만 유효).

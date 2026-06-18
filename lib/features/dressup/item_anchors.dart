@@ -16,16 +16,26 @@ class SlotAnchor {
   final double aspect;
 }
 
-/// 카피바라 파일럿에서 검증한 모자 겹침: HAT 앵커(0.50,0.12)에서 머리 쪽으로 살짝 내려 자연스럽게 안착.
-/// 기기에서 미세조정 가능한 상수 (정규화 H 비율).
-const double kHatOverlapH = 0.05;
+/// 모자 HAT 앵커(§3): x=0.50, 하단중앙 기준점. y = kHatBaseY + 동물별 겹침.
+const double kHatAnchorX = 0.50;
+const double kHatBaseY = 0.12;
+
+/// 모자 겹침(머리에 얹히는 정도, 정규화 H). 기본=카피바라 검증값.
+/// 동물별 오버라이드: 뿔·귀 등 머리 위 부착물 때문에 정수리(=bbox 상단)가 실제 머리보다
+/// 위에 잡히는 동물은 더 많이 내려야 모자가 머리에 얹힌다.
+const double kHatOverlapDefault = 0.05; // gito(카피바라) 등 부착물 작은 동물
+const Map<String, double> kHatOverlapByAnimal = {
+  'gapmok': 0.14, // 사슴: 뿔이 머리 위로 솟아 bbox 상단=뿔끝 → 모자를 더 내려야 머리에 얹힘(뿔은 양옆 노출)
+};
+double hatOverlapFor(String animalId) =>
+    kHatOverlapByAnimal[animalId] ?? kHatOverlapDefault;
 
 /// item_hat_beret01 캔버스 비율(512×384). 실제 아트 교체 시만 갱신.
 const double kHatAspect = 384 / 512;
 
 const slotAnchors = <String, SlotAnchor>{
   'hat': SlotAnchor(
-    anchor: Offset(0.50, 0.12 + kHatOverlapH),
+    anchor: Offset(kHatAnchorX, kHatBaseY), // y는 DressedAnimal이 동물별 겹침을 더해 보정
     refPoint: Alignment.bottomCenter,
     widthFrac: 0.52,
     aspect: kHatAspect,

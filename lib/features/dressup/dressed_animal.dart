@@ -105,7 +105,11 @@ class _DressedAnimalState extends State<DressedAnimal>
     final w = a.widthFrac * s;
     final h = w * a.aspect;
     final ax = a.anchor.dx * s;
-    final ay = a.anchor.dy * s;
+    // 모자는 동물별 겹침(뿔·귀 보정)을 base y에 더해 앵커 산출.
+    final anchorY = slot == 'hat'
+        ? (kHatBaseY + hatOverlapFor(widget.animal.id))
+        : a.anchor.dy;
+    final ay = anchorY * s;
     // 기준점(refPoint)을 앵커에 맞춰 좌상단 좌표 산출
     final left = ax - w * ((a.refPoint.x + 1) / 2);
     final top = ay - h * ((a.refPoint.y + 1) / 2);
