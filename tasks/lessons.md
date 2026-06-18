@@ -93,3 +93,16 @@
 - **Supabase Management API는 가끔 504(CF 게이트웨이).** 마이그레이션/쿼리에 지수백오프 재시도 래퍼 필요.
 - **드래그=진행 인터랙션은 onPanUpdate 누적 + 임계 햅틱.** "보는 애니메이션" 아니라 입력에 실시간 연동(찢김=드래그 거리/임계).
   탭=스킵(끝까지 채움)으로 100일차 배려. 위젯 테스트는 탭 스킵→onOpened 콜백으로 검증(드래그 시뮬은 까다로움).
+
+## 2026-06-17 (Slice 4 — 꾸미기·앨범)
+
+- **`late final` 컨트롤러를 lazy 초기화하면 dispose에서 폭발.** idle=false 경로에서 `_c`를 한 번도 안 쓰면
+  미생성 상태로 남다가 `dispose()`의 `_c.dispose()`가 lazy-init→createTicker→비활성 트리 ancestor 조회 →
+  "Looking up a deactivated widget's ancestor is unsafe". **initState에서 즉시 생성**할 것(조건부 생성 금지).
+- **아이템 합성은 정규화 앵커로(불변량).** §3 앵커(0~1)·기준점(하단중앙/중앙)·widthFrac만 쓰고 박스크기 곱해 배치 →
+  하드코딩 픽셀 0, 전 동물·전 해상도 공용. 모자 겹침은 카피바라 검증 상수(kHatOverlapH)로 분리해 기기 조정 가능.
+- **idle 강도는 상수로 분리.** "살아있나" 수준(±1% scale, 1% bob)을 `IdleAnim`에 두고 폰에서 조정. 과하면 100일차 거슬림.
+- **Riverpod 3.x AsyncNotifier는 `state.value`(nullable)** — 2.x의 `valueOrNull` 없음. 빈 컬렉션 리터럴은 타입 명시(`<String,String>{}`).
+- **한국어 조사 자동화**: 받침=`(code-0xAC00)%28 != 0`. 을/를·이/가·은/는·와/과. UI에 "을(를)" 노출 금지 — 처음부터 함수로.
+- **미리보기 ≠ 소유.** 꾸미기는 미소유 아이템도 합성 미리보기(앵커 검증)는 허용하되 저장은 소유분만, 미소유는 🔒 →
+  앵커/핏 즉시 검증 + 희소성(D3) 보존 양립.

@@ -80,6 +80,25 @@ class DailyRepository {
     return OpenResult.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// 한 달치 운세 기록 (앨범). day(1~31) → (grade, opened). RLS read own.
+  Future<Map<int, ({String grade, bool opened})>> month(int year, int month) async {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final first = '$year-${two(month)}-01';
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final last = '$year-${two(month)}-${two(lastDay)}';
+    final rows = await _client
+        .from('daily_fortunes')
+        .select('date, grade, opened_at')
+        .gte('date', first)
+        .lte('date', last);
+    final map = <int, ({String grade, bool opened})>{};
+    for (final r in rows) {
+      final day = int.parse((r['date'] as String).split('-')[2]);
+      map[day] = (grade: r['grade'] as String, opened: r['opened_at'] != null);
+    }
+    return map;
+  }
+
   /// 보상 아이템 메타 (없으면 null).
   Future<Item?> item(String id) async {
     final row = await _client

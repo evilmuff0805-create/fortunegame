@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/providers.dart';
-import 'features/home/home_screen.dart';
+import 'features/home/main_shell.dart';
 import 'features/onboarding/onboarding_flow.dart';
 
 class FortuneApp extends StatelessWidget {
@@ -47,7 +47,7 @@ class _AppRouter extends ConsumerWidget {
           ? OnboardingFlow(
               onComplete: () => ref.read(profileProvider.notifier).reload(),
             )
-          : HomeScreen(profile: p),
+          : MainShell(profile: p),
     );
   }
 }

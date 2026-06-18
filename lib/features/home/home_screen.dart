@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/animal.dart';
 import '../../core/models/profile.dart';
-import '../../core/notifications/notification_service.dart';
 import '../../data/providers.dart';
 import '../account/account_link_sheet.dart';
 import '../daily/daily_open_screen.dart';
-import '../onboarding/widgets/animal_placeholder.dart';
+import '../dressup/dressed_animal.dart';
 
-/// 데일리 루프 홈 — 내 동물 + 오늘 봉투(미개봉/개봉) + 스트릭.
+/// 홈 탭 (body 전용 — 셸이 Scaffold/AppBar 제공). 내 동물(장착 반영) + 오늘 봉투.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key, required this.profile});
 
@@ -20,49 +19,21 @@ class HomeScreen extends ConsumerWidget {
     final catalog = ref.watch(animalCatalogProvider);
     final status = ref.watch(dailyStatusProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('내 동물'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            tooltip: '아침 알림',
-            onPressed: () => _pushSettings(context),
-          ),
-        ],
-      ),
-      body: catalog.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('카탈로그 로드 실패: $e')),
-        data: (map) {
-          final animal = map[profile.animalId];
-          if (animal == null) {
-            return Center(child: Text('알 수 없는 동물: ${profile.animalId}'));
-          }
-          return status.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _Offline(animal: animal, error: '$e'),
-            data: (s) => _HomeBody(animal: animal, opened: s.opened, leak: s.leak),
-          );
-        },
-      ),
+    return catalog.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('카탈로그 로드 실패: $e')),
+      data: (map) {
+        final animal = map[profile.animalId];
+        if (animal == null) {
+          return Center(child: Text('알 수 없는 동물: ${profile.animalId}'));
+        }
+        return status.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => _Offline(animal: animal, error: '$e'),
+          data: (s) => _HomeBody(animal: animal, opened: s.opened, leak: s.leak),
+        );
+      },
     );
-  }
-
-  Future<void> _pushSettings(BuildContext context) async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 8, minute: 0),
-      helpText: '아침 알림 시간',
-    );
-    if (time == null) return;
-    await NotificationService.instance.requestPermission();
-    await NotificationService.instance.scheduleDailyMorning(time);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('매일 ${time.format(context)}에 봉투 알림을 보낼게')),
-      );
-    }
   }
 }
 
@@ -77,7 +48,7 @@ class _HomeBody extends ConsumerWidget {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => DailyOpenScreen(animal: animal, leak: leak),
     ));
-    ref.invalidate(dailyStatusProvider); // 개봉 후 상태 새로고침
+    ref.invalidate(dailyStatusProvider);
   }
 
   @override
@@ -85,7 +56,8 @@ class _HomeBody extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final anon =
         ref.read(supabaseClientProvider).auth.currentUser?.isAnonymous ?? false;
-    // 미개봉 + 봉투 전달 포즈(있으면), 개봉 후 기본 포즈
+    final equippedItems = ref.watch(equippedItemsProvider);
+    // 미개봉이면 봉투 전달 포즈(있을 때)
     final showDeliver = !opened && animal.deliverAsset != null;
 
     return ListView(
@@ -93,9 +65,16 @@ class _HomeBody extends ConsumerWidget {
       children: [
         const SizedBox(height: 12),
         Center(
-          child: showDeliver
-              ? Image.asset(animal.deliverAsset!, height: 200, fit: BoxFit.contain)
-              : AnimalPlaceholder(animal: animal, size: 180),
+          child: equippedItems.maybeWhen(
+            data: (eq) => DressedAnimal(
+              animal: animal,
+              equipped: eq,
+              size: 200,
+              useDeliverPose: showDeliver,
+            ),
+            orElse: () =>
+                DressedAnimal(animal: animal, size: 200, useDeliverPose: showDeliver),
+          ),
         ),
         const SizedBox(height: 16),
         Center(child: Text(animal.name, style: text.headlineSmall)),
@@ -180,7 +159,7 @@ class _Offline extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimalPlaceholder(animal: animal, size: 140),
+            DressedAnimal(animal: animal, size: 140, idle: false),
             const SizedBox(height: 16),
             Text('오늘 봉투를 불러오지 못했어\n$error', textAlign: TextAlign.center),
           ],

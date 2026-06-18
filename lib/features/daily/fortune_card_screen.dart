@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/analytics/analytics_service.dart';
 import '../../core/analytics/events.dart';
+import '../../core/korean.dart';
 import '../../core/models/animal.dart';
 import '../../core/models/item.dart';
 import '../../data/providers.dart';
@@ -220,7 +221,7 @@ class _RewardBlock extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('보상 획득!', style: text.titleMedium),
-                Text('${reward!.displayName} 을(를) 받았어',
+                Text('${reward!.displayName}${josaEulReul(reward!.displayName)} 받았어',
                     style: text.bodyMedium),
               ],
             ),
